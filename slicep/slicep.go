@@ -1,3 +1,12 @@
+/*
+Package slicep supplements the standard library's slices package by providing
+functions corresponding to sequence processing utilities in the iterp package.
+Functions in this package should match corresponding iterp function signatures
+and semantics.
+
+In addition the FoldRight function can be reasonably implemented for slices
+while it is not practical (and not available) on general sequences.
+*/
 package slicep
 
 import (
@@ -7,6 +16,7 @@ import (
 	"github.com/bmatsuo/iterp/funcs"
 )
 
+// Map applies f to each element of s and returns a slice of the results.
 func Map[T any, U any](s []T, f funcs.Map[T, U]) []U {
 	result := make([]U, len(s))
 	for i, v := range s {
@@ -15,6 +25,7 @@ func Map[T any, U any](s []T, f funcs.Map[T, U]) []U {
 	return result
 }
 
+// Map2 is like Map but operates on a slice of pairs.
 func Map2[T any, U any](s []T, f funcs.Map2[int, T, U]) []U {
 	result := make([]U, len(s))
 	for i, v := range s {
@@ -23,22 +34,32 @@ func Map2[T any, U any](s []T, f funcs.Map2[int, T, U]) []U {
 	return result
 }
 
+// Select returns a slice containing all elements of s that satisfy the predicate p.
 func Select[T any](s []T, p funcs.Select[T]) []T {
+	// TODO: potentially pre-allocate the result slice.
 	vals := slices.Values(s)
 	vals = iterp.Select(vals, p)
 	return slices.Collect(vals)
 }
 
+// Reject returns a slice containing all elements of s that do not satisfy the predicate p.
 func Reject[T any](s []T, p funcs.Select[T]) []T {
+	// TODO: potentially pre-allocate the result slice.
 	vals := slices.Values(s)
 	vals = iterp.Reject(vals, p)
 	return slices.Collect(vals)
 }
 
+// FoldLeft aggregates s from left to right by merging elements into an accumulator initialized to init.
 func FoldLeft[T any, U any](s []T, init U, f funcs.FoldL[T, U]) U {
-	return iterp.FoldLeft(slices.Values(s), init, f)
+	acc := init
+	for _, v := range s {
+		acc = f(acc, v)
+	}
+	return acc
 }
 
+// FoldRight aggregates s from right to left by merging elements into an accumulator initialized to init.
 func FoldRight[T any, U any](s []T, init U, f funcs.FoldR[T, U]) U {
 	// FoldRight is inefficient for generic sequences, but slices can be right-folded.
 	acc := init

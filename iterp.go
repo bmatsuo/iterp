@@ -3,14 +3,30 @@ Package iterp provides basic utilities for processing generic sequences.  The
 supplemental packages iterp/slicep and iterp/mapp provide analogous utilities
 for slices and maps with consistent APIs.
 
-# Map vs Map2
+# Seq and Seq2
 
-The Map and Map2 sequentially apply a function to iter.Seq and iter.Seq2
-respectively. The output has the same shape as the input, so Map2 returns an
-iter.Seq2 with the original sequence's "left" values paired with the mapped
-"right" values. This definition of Map2 makes the function work consistently
-with the Map2 functions for slices and maps which preserve the indices/keys of
-the original container.
+The iter.Seq and iter.Seq2 types are the primary abstractions in this package.
+Sequences may be infinite and they not be replayable. This package should
+generally provide two implementations of each operations: one that operates on
+Seq and one that operates on Seq2. The "normal" version of a function operates
+on Seq values and the "2" variant of a function operates on Seq2 values. For
+example, Map takes a Seq[T] as input and produces a Seq[U] as output while Map2
+takes a Seq2[T,U] as input and produces a Seq2[T,V] as output.
+
+# Map2 vs MapSeq2
+
+Map2 returns an iter.Seq2 with the original sequence's "left" values paired with
+the mapped "right" values. This definition of Map2 makes the function work
+consistently with the Map2 functions for slices and maps which preserve the
+indices/keys of the original container.
+
+MapSeq2 in this package provides a more general mapping for iter.Seq2 than is
+provided by Map2. But, the ability to rewrite the "left" value is not well
+defined for maps and slices. So while MapSeq2 can be used to create new maps and
+slices from existing ones, implementing this functionality is left up to
+individual applications which can apply domain specific knowledge to reason
+about collisions and/or "gaps" in the output keys/indices and determine
+appropriate semantics as necessary.
 
 # FoldLeft vs FoldRight
 
@@ -45,6 +61,11 @@ func Chan[T any](c <-chan T) iter.Seq[T] {
 // List returns an ordered sequence containing the given values.
 func List[T any](values ...T) iter.Seq[T] {
 	return slices.Values(values)
+}
+
+// List2 returns an ordered sequence of pairs containing the given values paired with their indices.
+func List2[T any](values ...T) iter.Seq2[int, T] {
+	return slices.All(values)
 }
 
 // Empty returns a sequence with no elements.
@@ -222,11 +243,26 @@ func Map[T any, U any](it iter.Seq[T], f funcs.Map[T, U]) iter.Seq[U] {
 	}
 }
 
-// Map2 is like Map but operates on a sequence of pairs.
+// Map2 is like Map but operates on a sequence of pairs.  The resulting sequence
+// has the same "left" values as the input and "right" values obtained by
+// applying f to the input pairs.
 func Map2[T any, U any, V any](it iter.Seq2[T, U], f funcs.Map2[T, U, V]) iter.Seq2[T, V] {
 	return func(yield func(T, V) bool) {
 		for v, w := range it {
 			if !yield(v, f(v, w)) {
+				return
+			}
+		}
+	}
+}
+
+// MapSeq2 is like Map2 but the mapping function produces of the left and right
+// values of the output sequence.
+func MapSeq2[T any, U any, V any, W any](it iter.Seq2[T, U], f func(T, U) (V, W)) iter.Seq2[V, W] {
+	return func(yield func(V, W) bool) {
+		for v, w := range it {
+			v2, w2 := f(v, w)
+			if !yield(v2, w2) {
 				return
 			}
 		}

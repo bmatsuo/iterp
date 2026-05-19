@@ -1,6 +1,8 @@
 package mapp
 
-import "github.com/bmatsuo/iterp/funcs"
+import (
+	"github.com/bmatsuo/iterp/funcs"
+)
 
 func Map[K comparable, T any, U any](m map[K]T, f funcs.Map[T, U]) map[K]U {
 	result := make(map[K]U, len(m))

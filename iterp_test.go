@@ -2,7 +2,9 @@ package iterp
 
 import (
 	"iter"
+	"maps"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -489,6 +491,42 @@ func TestMap2(t *testing.T) {
 			return x * 2
 		}) {
 			sum += doubled
+			break
+		}
+		assert.Equal(t, expected, sum)
+	})
+}
+
+func TestMapSeq2(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		assert.Empty(t, slices.Collect(Right(MapSeq2(Empty2[int, int](), func(i int, x int) (int, int) { return i, x }))))
+	})
+
+	t.Run("finite", func(t *testing.T) {
+		source := map[string]int{
+			"a": 0,
+			"b": 1,
+			"c": 2,
+		}
+		got := maps.Collect(MapSeq2(maps.All(source), func(k string, x int) (string, int) {
+			return strings.ToUpper(k), x * 2
+		}))
+		expect := map[string]int{
+			"A": 0,
+			"B": 2,
+			"C": 4,
+		}
+		assert.Equal(t, expect, got)
+	})
+
+	t.Run("break", func(t *testing.T) {
+		source := []int{1, 2, 3, 4}
+		sum := 0
+		expected := 2
+		for i, v := range MapSeq2(slices.All(source), func(i int, x int) (int, int) {
+			return i, 2 * x
+		}) {
+			sum += i + v
 			break
 		}
 		assert.Equal(t, expected, sum)
