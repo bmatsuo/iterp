@@ -6,7 +6,7 @@ for slices and maps with consistent APIs.
 # Seq and Seq2
 
 The iter.Seq and iter.Seq2 types are the primary abstractions in this package.
-Sequences may be infinite and they not be replayable. This package should
+Sequences may be infinite and they may not be replayable. This package should
 generally provide two implementations of each operations: one that operates on
 Seq and one that operates on Seq2. The "normal" version of a function operates
 on Seq values and the "2" variant of a function operates on Seq2 values. For
