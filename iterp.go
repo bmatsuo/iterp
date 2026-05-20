@@ -80,10 +80,33 @@ func Empty2[T any, U any]() iter.Seq2[T, U] {
 
 // Concat returns a sequence that concatenates its arguments.
 func Concat[T any](its ...iter.Seq[T]) iter.Seq[T] {
+	return Flatten(slices.Values(its))
+}
+
+// Concat2 returns a sequence that concatenates its arguments.
+func Concat2[T any, U any](its ...iter.Seq2[T, U]) iter.Seq2[T, U] {
+	return Flatten2(slices.Values(its))
+}
+
+// Flatten concatenates a sequence of sequences to produce a single sequence.
+func Flatten[T any](its iter.Seq[iter.Seq[T]]) iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for _, it := range its {
+		for it := range its {
 			for v := range it {
 				if !yield(v) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// Flatten2 concatenates a sequence of sequences of pairs to produce a single sequence of pairs.
+func Flatten2[T any, U any](its iter.Seq[iter.Seq2[T, U]]) iter.Seq2[T, U] {
+	return func(yield func(T, U) bool) {
+		for it := range its {
+			for v, w := range it {
+				if !yield(v, w) {
 					return
 				}
 			}
@@ -241,6 +264,11 @@ func Map[T any, U any](it iter.Seq[T], f funcs.Map[T, U]) iter.Seq[U] {
 			}
 		}
 	}
+}
+
+// FlatMap is a convenience function for Flatten(Map(it, f))
+func FlatMap[T any, U any](it iter.Seq[T], f funcs.Map[T, iter.Seq[U]]) iter.Seq[U] {
+	return Flatten(Map(it, f))
 }
 
 // Map2 is like Map but operates on a sequence of pairs.  The resulting sequence

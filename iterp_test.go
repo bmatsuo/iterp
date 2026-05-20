@@ -114,6 +114,38 @@ func TestConcat(t *testing.T) {
 	})
 }
 
+func TestConcat2(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		assert.Empty(t, maps.Collect(Concat2[int, int]()))
+	})
+
+	t.Run("finite", func(t *testing.T) {
+		m1 := map[string]string{
+			"a": "a1",
+			"b": "b1",
+		}
+		m2 := map[string]string{
+			"b": "b2",
+			"c": "c2",
+		}
+		expect := map[string]string{
+			"a": "a1",
+			"b": "b2",
+			"c": "c2",
+		}
+		assert.Equal(t, expect, maps.Collect(Concat2(maps.All(m1), maps.All(m2))))
+	})
+
+	t.Run("break", func(t *testing.T) {
+		entered := false
+		for range Concat2(List2(1, 2, 3)) {
+			entered = true
+			break
+		}
+		assert.True(t, entered)
+	})
+}
+
 func TestDropN(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		assert.Empty(t, slices.Collect(DropN(Empty[int](), 5)))
@@ -400,14 +432,13 @@ func TestRepeat(t *testing.T) {
 
 func TestLeft(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		vals := Left(slices.All[[]int](nil))
+		vals := Left(Empty2[int, int]())
 		assert.Empty(t, slices.Collect(vals))
 	})
 
 	t.Run("finite", func(t *testing.T) {
-		source := []string{"a", "b", "c"}
 		expect := []int{0, 1, 2}
-		vals := Left(slices.All(source))
+		vals := Left(List2("a", "b", "c"))
 		assert.Equal(t, expect, slices.Collect(vals))
 	})
 
@@ -424,7 +455,7 @@ func TestLeft(t *testing.T) {
 
 func TestRight(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		vals := Right(slices.All[[]int](nil))
+		vals := Right(Empty2[int, string]())
 		assert.Empty(t, slices.Collect(vals))
 	})
 
@@ -435,8 +466,7 @@ func TestRight(t *testing.T) {
 	})
 
 	t.Run("break", func(t *testing.T) {
-		source := []string{"a", "b", "c"}
-		vals := Right(slices.All(source))
+		vals := Right(List2("a", "b", "c"))
 		assert.Equal(t, 3, seqLen(vals))
 		for v := range vals {
 			assert.Equal(t, "a", v)
@@ -468,6 +498,19 @@ func TestMap(t *testing.T) {
 			break
 		}
 		assert.Equal(t, expected, sum)
+	})
+}
+
+func TestFlatMap(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		assert.Empty(t, slices.Collect(FlatMap(Empty[int](), func(x int) iter.Seq[int] { return List(x) })))
+	})
+
+	t.Run("finite", func(t *testing.T) {
+		source := []int{0, 1, 2}
+		expect := []int{1, 2, 2}
+		vals := slices.Collect(FlatMap(slices.Values(source), func(x int) iter.Seq[int] { return Repeat(List(x), x) }))
+		assert.Equal(t, expect, vals)
 	})
 }
 

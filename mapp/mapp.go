@@ -1,3 +1,7 @@
+/*
+Package mapp standard library's maps package by providing functions
+corresponding to sequence processing utilities in the iterp package.
+*/
 package mapp
 
 import (
