@@ -44,6 +44,7 @@ import (
 	"slices"
 
 	"github.com/bmatsuo/iterp/funcs"
+	"golang.org/x/exp/constraints"
 )
 
 // Chan wraps c as a sequence so it can be passed to sequence processing functions.
@@ -317,4 +318,17 @@ func FoldLeft[T any, U any](it iter.Seq[T], init U, f funcs.FoldL[T, U]) U {
 		acc = f(acc, v)
 	}
 	return acc
+}
+
+// Summable types can be added using the + operator
+type Summable interface {
+	constraints.Integer | constraints.Float | constraints.Complex | ~string
+}
+
+func Sum[S Summable](it iter.Seq[S]) S {
+	var sum S
+	for v := range it {
+		sum += v
+	}
+	return sum
 }

@@ -618,6 +618,20 @@ func TestFoldLeft(t *testing.T) {
 	})
 }
 
+func TestSum(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		result := Sum(Empty[int]())
+		assert.Equal(t, 0, result)
+	})
+
+	t.Run("finite", func(t *testing.T) {
+		source := []string{"a", "b", "c", "d"}
+		expect := "abcd"
+		result := Sum(slices.Values(source))
+		assert.Equal(t, expect, result)
+	})
+}
+
 func seqLen[T any](it iter.Seq[T]) int {
 	count := 0
 	for range it {
