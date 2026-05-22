@@ -197,6 +197,16 @@ func Select[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
 	}
 }
 
+func Find[T any](it iter.Seq[T], p funcs.Select[T]) (T, bool) {
+	for v := range it {
+		if p(v) {
+			return v, true
+		}
+	}
+	var zero T
+	return zero, false
+}
+
 // Reject returns a subsequence of it without elements for which p is true.
 func Reject[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {

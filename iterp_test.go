@@ -337,6 +337,28 @@ func TestSelect(t *testing.T) {
 	})
 }
 
+func TestFind(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		v, ok := Find(Empty[int](), func(_ int) bool { return true })
+		assert.False(t, ok)
+		assert.Equal(t, 0, v)
+	})
+
+	t.Run("found", func(t *testing.T) {
+		source := []string{"a", "b", "cde"}
+		v, ok := Find(slices.Values(source), func(x string) bool { return len(x) > 1 })
+		assert.True(t, ok)
+		assert.Equal(t, "cde", v)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		source := []int{0, 1, 2, 3, 4}
+		v, ok := Find(slices.Values(source), func(x int) bool { return x > 10 })
+		assert.False(t, ok)
+		assert.Equal(t, 0, v)
+	})
+}
+
 func TestReject(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		assert.Empty(t, slices.Collect(Reject(Empty[int](), func(_ int) bool { return true })))
