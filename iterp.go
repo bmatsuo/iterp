@@ -61,9 +61,14 @@ type FoldLFunc[T any, U any] = func(accumulator U, value T) U
 // FoldRFunc merges a value into an accumulator from the right.
 type FoldRFunc[T any, U any] = func(value T, accumulator U) U
 
-// Summable types can be added using the + operator
+// Summable is a constraint that matches types that can be added using the + operator.
 type Summable interface {
 	constraints.Integer | constraints.Float | constraints.Complex | ~string
+}
+
+// Numeric is a constraint that matches all numeric types.
+type Numeric interface {
+	constraints.Integer | constraints.Float | constraints.Complex
 }
 
 // Chan wraps c as a sequence so it can be passed to sequence processing functions.

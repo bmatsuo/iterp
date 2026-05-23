@@ -13,8 +13,20 @@ func Ints[Z constraints.Integer](start Z) iter.Seq[Z] {
 
 // IntsStep returns an infinite sequence of integers from start and increasing by step.
 func IntsStep[Z constraints.Integer](start Z, step Z) iter.Seq[Z] {
-	return func(yield func(Z) bool) {
-		for i := start; ; i += step {
+	return AffineStep(start, 1, step)
+}
+
+// AffineStep returns a sequence of repeated applications of the affine function
+// f(z) = a*z + b to the initial value start.
+func AffineStep[Z Numeric](start Z, a, b Z) iter.Seq[Z] {
+	return RepeatedFunc(start, func(z Z) Z { return a*z + b })
+}
+
+// RepeatedFunc returns a sequence of repeated applications of the function:
+// start, f(start), f(f(start)), ...
+func RepeatedFunc[T any](start T, f func(T) T) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for i := start; ; i = f(i) {
 			if !yield(i) {
 				return
 			}
