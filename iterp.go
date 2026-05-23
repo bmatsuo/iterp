@@ -221,7 +221,9 @@ func Reject[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
 	}
 }
 
-// Repeat returns a sequence that repeats it n times. If n is negative, the resulting sequence is infinite.
+// Repeat returns a sequence that repeats the sequence it n times. If n is
+// negative, the resulting sequence is infinite.  Only replayable sequences can
+// be repeated.
 func Repeat[T any](it iter.Seq[T], n int) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		if n < 0 {
