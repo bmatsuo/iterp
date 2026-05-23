@@ -13,11 +13,10 @@ import (
 	"slices"
 
 	"github.com/bmatsuo/iterp"
-	"github.com/bmatsuo/iterp/funcs"
 )
 
 // Map applies f to each element of s and returns a slice of the results.
-func Map[S ~[]T, T any, U any](s S, f funcs.Map[T, U]) []U {
+func Map[S ~[]T, T any, U any](s S, f iterp.MapFunc[T, U]) []U {
 	result := make([]U, len(s))
 	for i, v := range s {
 		result[i] = f(v)
@@ -26,7 +25,7 @@ func Map[S ~[]T, T any, U any](s S, f funcs.Map[T, U]) []U {
 }
 
 // Map2 is like Map but operates on a slice of pairs.
-func Map2[S ~[]T, T any, U any](s S, f funcs.Map2[int, T, U]) []U {
+func Map2[S ~[]T, T any, U any](s S, f iterp.Map2Func[int, T, U]) []U {
 	result := make([]U, len(s))
 	for i, v := range s {
 		result[i] = f(i, v)
@@ -35,7 +34,7 @@ func Map2[S ~[]T, T any, U any](s S, f funcs.Map2[int, T, U]) []U {
 }
 
 // Select returns a slice containing all elements of s that satisfy the predicate p.
-func Select[S ~[]T, T any](s S, p funcs.Select[T]) S {
+func Select[S ~[]T, T any](s S, p iterp.PredicateFunc[T]) S {
 	// TODO: heuristic for when pre-allocation is bad
 	return slices.AppendSeq(
 		make(S, 0, len(s)),
@@ -44,7 +43,7 @@ func Select[S ~[]T, T any](s S, p funcs.Select[T]) S {
 }
 
 // Reject returns a slice containing all elements of s that do not satisfy the predicate p.
-func Reject[S ~[]T, T any](s S, p funcs.Select[T]) S {
+func Reject[S ~[]T, T any](s S, p iterp.PredicateFunc[T]) S {
 	// TODO: heuristic for when pre-allocation is bad
 	return slices.AppendSeq(
 		make(S, 0, len(s)),
@@ -53,7 +52,7 @@ func Reject[S ~[]T, T any](s S, p funcs.Select[T]) S {
 }
 
 // FoldLeft aggregates s from left to right by merging elements into an accumulator initialized to init.
-func FoldLeft[S ~[]T, T any, U any](s S, init U, f funcs.FoldL[T, U]) U {
+func FoldLeft[S ~[]T, T any, U any](s S, init U, f iterp.FoldLFunc[T, U]) U {
 	acc := init
 	for _, v := range s {
 		acc = f(acc, v)
@@ -62,7 +61,7 @@ func FoldLeft[S ~[]T, T any, U any](s S, init U, f funcs.FoldL[T, U]) U {
 }
 
 // FoldRight aggregates s from right to left by merging elements into an accumulator initialized to init.
-func FoldRight[S ~[]T, T any, U any](s S, init U, f funcs.FoldR[T, U]) U {
+func FoldRight[S ~[]T, T any, U any](s S, init U, f iterp.FoldRFunc[T, U]) U {
 	// FoldRight is inefficient for generic sequences, but slices can be right-folded.
 	acc := init
 	for i := len(s) - 1; i >= 0; i-- {

@@ -43,9 +43,28 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/bmatsuo/iterp/funcs"
 	"golang.org/x/exp/constraints"
 )
+
+// MapFunc transforms a single value
+type MapFunc[T any, U any] = func(value T) U
+
+// Map2Func transforms a value with an associated key/index
+type Map2Func[K any, T any, U any] = func(index K, value T) U
+
+// PredicateFunc returns true for values that should be selected.
+type PredicateFunc[T any] = func(value T) bool
+
+// FoldLFunc merges a value into an accumulator from the left.
+type FoldLFunc[T any, U any] = func(accumulator U, value T) U
+
+// FoldRFunc merges a value into an accumulator from the right.
+type FoldRFunc[T any, U any] = func(value T, accumulator U) U
+
+// Summable types can be added using the + operator
+type Summable interface {
+	constraints.Integer | constraints.Float | constraints.Complex | ~string
+}
 
 // Chan wraps c as a sequence so it can be passed to sequence processing functions.
 // Because the channel is stateful the resulting sequence is not replayable.
@@ -134,7 +153,7 @@ func DropN[T any](it iter.Seq[T], n int) iter.Seq[T] {
 
 // DropWhile returns the longest suffix of it for which p is false for the first
 // element.
-func DropWhile[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
+func DropWhile[T any](it iter.Seq[T], p PredicateFunc[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		dropping := true
 		for v := range it {
@@ -172,7 +191,7 @@ func TakeN[T any](it iter.Seq[T], n int) iter.Seq[T] {
 
 // TakeWhile returns the longest prefix of it for which p is true for every
 // element.
-func TakeWhile[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
+func TakeWhile[T any](it iter.Seq[T], p PredicateFunc[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for v := range it {
 			if !p(v) {
@@ -186,7 +205,7 @@ func TakeWhile[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
 }
 
 // Select returns a subsequence of it with all elements for which p is true.
-func Select[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
+func Select[T any](it iter.Seq[T], p PredicateFunc[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for v := range it {
 			if p(v) {
@@ -198,7 +217,7 @@ func Select[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
 	}
 }
 
-func Find[T any](it iter.Seq[T], p funcs.Select[T]) (T, bool) {
+func Find[T any](it iter.Seq[T], p PredicateFunc[T]) (T, bool) {
 	for v := range it {
 		if p(v) {
 			return v, true
@@ -209,7 +228,7 @@ func Find[T any](it iter.Seq[T], p funcs.Select[T]) (T, bool) {
 }
 
 // Reject returns a subsequence of it without elements for which p is true.
-func Reject[T any](it iter.Seq[T], p funcs.Select[T]) iter.Seq[T] {
+func Reject[T any](it iter.Seq[T], p PredicateFunc[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for v := range it {
 			if !p(v) {
@@ -269,7 +288,7 @@ func Right[T any, U any](it iter.Seq2[T, U]) iter.Seq[U] {
 }
 
 // Map returns a sequence resulting from applying f to elements of it
-func Map[T any, U any](it iter.Seq[T], f funcs.Map[T, U]) iter.Seq[U] {
+func Map[T any, U any](it iter.Seq[T], f MapFunc[T, U]) iter.Seq[U] {
 	return func(yield func(U) bool) {
 		for v := range it {
 			if !yield(f(v)) {
@@ -280,14 +299,14 @@ func Map[T any, U any](it iter.Seq[T], f funcs.Map[T, U]) iter.Seq[U] {
 }
 
 // FlatMap is a convenience function for Flatten(Map(it, f))
-func FlatMap[T any, U any](it iter.Seq[T], f funcs.Map[T, iter.Seq[U]]) iter.Seq[U] {
+func FlatMap[T any, U any](it iter.Seq[T], f MapFunc[T, iter.Seq[U]]) iter.Seq[U] {
 	return Flatten(Map(it, f))
 }
 
 // Map2 is like Map but operates on a sequence of pairs.  The resulting sequence
 // has the same "left" values as the input and "right" values obtained by
 // applying f to the input pairs.
-func Map2[T any, U any, V any](it iter.Seq2[T, U], f funcs.Map2[T, U, V]) iter.Seq2[T, V] {
+func Map2[T any, U any, V any](it iter.Seq2[T, U], f Map2Func[T, U, V]) iter.Seq2[T, V] {
 	return func(yield func(T, V) bool) {
 		for v, w := range it {
 			if !yield(v, f(v, w)) {
@@ -314,17 +333,12 @@ func MapSeq2[T any, U any, V any, W any](it iter.Seq2[T, U], f func(T, U) (V, W)
 //
 // Note that a right fold over a generic sequence is very inefficient and it is
 // not provided here. Slices can be right-folded.
-func FoldLeft[T any, U any](it iter.Seq[T], init U, f funcs.FoldL[T, U]) U {
+func FoldLeft[T any, U any](it iter.Seq[T], init U, f FoldLFunc[T, U]) U {
 	acc := init
 	for v := range it {
 		acc = f(acc, v)
 	}
 	return acc
-}
-
-// Summable types can be added using the + operator
-type Summable interface {
-	constraints.Integer | constraints.Float | constraints.Complex | ~string
 }
 
 func Sum[S Summable](it iter.Seq[S]) S {
