@@ -55,6 +55,9 @@ type Map2Func[K any, T any, U any] = func(index K, value T) U
 // PredicateFunc returns true for values that should be selected.
 type PredicateFunc[T any] = func(value T) bool
 
+// PredicateFunc returns true for values that should be selected.
+type Predicate2Func[K any, T any] = func(index K, value T) bool
+
 // FoldLFunc merges a value into an accumulator from the left.
 type FoldLFunc[T any, U any] = func(accumulator U, value T) U
 
@@ -71,11 +74,14 @@ type Numeric interface {
 	constraints.Integer | constraints.Float | constraints.Complex
 }
 
-// Chan wraps c as a sequence so it can be passed to sequence processing functions.
-// Because the channel is stateful the resulting sequence is not replayable.
-func Chan[T any](c <-chan T) iter.Seq[T] {
+// Cons returns a sequence with head as the first element followed by the
+// elements of tail.
+func Cons[T any](head T, tail iter.Seq[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for v := range c {
+		if !yield(head) {
+			return
+		}
+		for v := range tail {
 			if !yield(v) {
 				return
 			}
@@ -222,6 +228,8 @@ func Select[T any](it iter.Seq[T], p PredicateFunc[T]) iter.Seq[T] {
 	}
 }
 
+// Find returns the first element in it for which p is true along with the bool
+// true. If there is no such element, it returns a zero value and false.
 func Find[T any](it iter.Seq[T], p PredicateFunc[T]) (T, bool) {
 	for v := range it {
 		if p(v) {
@@ -230,6 +238,19 @@ func Find[T any](it iter.Seq[T], p PredicateFunc[T]) (T, bool) {
 	}
 	var zero T
 	return zero, false
+}
+
+// Find2 returns the first pair in it for which p is true along with the bool
+// true. If there is no such pair, it returns zero values and false.
+func Find2[K any, T any](it iter.Seq2[K, T], p Predicate2Func[K, T]) (K, T, bool) {
+	for k, v := range it {
+		if p(k, v) {
+			return k, v, true
+		}
+	}
+	var zerok K
+	var zerot T
+	return zerok, zerot, false
 }
 
 // Reject returns a subsequence of it without elements for which p is true.
@@ -346,10 +367,50 @@ func FoldLeft[T any, U any](it iter.Seq[T], init U, f FoldLFunc[T, U]) U {
 	return acc
 }
 
+// Sum returns the sum of sequence elements.
 func Sum[S Summable](it iter.Seq[S]) S {
 	var sum S
 	for v := range it {
 		sum += v
 	}
 	return sum
+}
+
+// Unique returns a sequence that passes through unique elements of it the first
+// time each is encountered. Unique uses memory proportional to the number of
+// unique sequence elements.
+//
+// See Uniq for a more memory efficient way of removing duplicates from (sorted) sequences.
+func Unique[T comparable](it iter.Seq[T]) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		seen := make(map[T]struct{})
+		for v := range it {
+			if _, ok := seen[v]; !ok {
+				seen[v] = struct{}{}
+				if !yield(v) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// Uniq returns a sequence of values from it with consecutive duplicates removed
+// much like the uniq command line utility. The iteration uses constant memory.
+//
+// See Unique for building a sequence of truly unique values.
+func Uniq[T comparable](it iter.Seq[T]) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		var prev T
+		first := true
+		for v := range it {
+			if first || v != prev {
+				first = false
+				prev = v
+				if !yield(v) {
+					return
+				}
+			}
+		}
+	}
 }

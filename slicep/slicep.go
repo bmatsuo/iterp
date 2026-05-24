@@ -67,5 +67,53 @@ func FoldRight[S ~[]T, T any, U any](s S, init U, f iterp.FoldRFunc[T, U]) U {
 	for i := len(s) - 1; i >= 0; i-- {
 		acc = f(s[i], acc)
 	}
+
 	return acc
+}
+
+// DropWhile returns the longest of suffix of s such that the first element does
+// not satisfy the predicate p. DropWhile returns a value consistent with the
+// nilness of s.
+func DropWhile[S ~[]T, T any](s S, p iterp.PredicateFunc[T]) S {
+	i, _, ok := iterp.Find2(slices.All(s), func(i int, v T) bool { return !p(v) })
+	if !ok {
+		return s[:0]
+	}
+
+	return s[i:]
+}
+
+// DeleteWhile deletes the longest prefix of s which all satisfy the predicate
+// p, shifting values over to reuse space. DeleteWhile returns a value
+// consistent with the nilness of s.
+func DeleteWhile[S ~[]T, T any](s S, p iterp.PredicateFunc[T]) S {
+	i, _, ok := iterp.Find2(slices.All(s), func(i int, v T) bool { return !p(v) })
+	if !ok {
+		return slices.Delete(s, 0, len(s))
+	}
+
+	return slices.Delete(s, 0, i)
+}
+
+// DropRightWhile returns a the longest prefix of s such that the final element
+// does not satisfy the predicate p. DropRightWhile returns a value consistent
+// with the nilness of s.
+func DropRightWhile[S ~[]T, T any](s S, p iterp.PredicateFunc[T]) S {
+	i, _, ok := iterp.Find2(slices.Backward(s), func(i int, v T) bool { return !p(v) })
+	if !ok {
+		return s[:0]
+	}
+
+	return s[:i+1]
+}
+
+// DeleteRightWhile deletes the longest suffix of s which all satisfy the
+// predicate p, zeroing out the deleted elements to avoid memory leaks.
+// DeleteRightWhile returns a value consistent with the nilness of s.
+func DeleteRightWhile[S ~[]T, T any](s S, p iterp.PredicateFunc[T]) S {
+	i, _, ok := iterp.Find2(slices.Backward(s), func(i int, v T) bool { return !p(v) })
+	if !ok {
+		return slices.Delete(s, 0, len(s))
+	}
+	return slices.Delete(s, i+1, len(s))
 }

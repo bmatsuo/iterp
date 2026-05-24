@@ -10,45 +10,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestChan(t *testing.T) {
-	t.Run("empty", func(t *testing.T) {
-		c := make(chan int)
-		go func() {
-			close(c)
-		}()
-		assert.Empty(t, slices.Collect(Chan(c)))
+func TestCons(t *testing.T) {
+	t.Run("empty tail", func(t *testing.T) {
+		expect := []int{0}
+		vals := slices.Collect(Cons(0, Empty[int]()))
+		assert.Equal(t, expect, vals)
 	})
 
-	t.Run("finite", func(t *testing.T) {
-		c := make(chan int)
-		go func() {
-			for i := range 5 {
-				c <- i
-			}
-			close(c)
-		}()
-		expect := []int{0, 1, 2, 3, 4}
-		vals := slices.Collect(Chan(c))
+	t.Run("finite tail", func(t *testing.T) {
+		expect := []int{0, 1}
+		vals := slices.Collect(Cons(0, Cons(1, Empty[int]())))
 		assert.Equal(t, expect, vals)
 	})
 
 	t.Run("break", func(t *testing.T) {
-		c := make(chan int)
-		go func() {
-			for i := 0; i < 5; i++ {
-				c <- i
-			}
-			close(c)
-		}()
-		expect := []int{0, 1, 2, 3, 4}
+		vals := Cons(0, Cons(1, Empty[int]()))
 		count := 0
-		for v := range Chan(c) {
-			assert.Equal(t, expect[count], v)
+		// there are two parts of the iteration which can be broken. Skipping
+		// the first allows us to head both.
+		for range vals {
+			if count > 0 {
+				break
+			}
 			count++
-			break
 		}
 		assert.Equal(t, 1, count)
 	})
+
 }
 
 func TestList(t *testing.T) {
@@ -359,6 +347,31 @@ func TestFind(t *testing.T) {
 	})
 }
 
+func TestFind2(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		k, v, ok := Find2(Empty2[int, string](), func(_ int, _ string) bool { return true })
+		assert.False(t, ok)
+		assert.Equal(t, 0, k)
+		assert.Equal(t, "", v)
+	})
+
+	t.Run("found", func(t *testing.T) {
+		source := []string{"a", "b", "cde"}
+		k, v, ok := Find2(slices.All(source), func(i int, x string) bool { return len(x) > 1 })
+		assert.True(t, ok)
+		assert.Equal(t, 2, k)
+		assert.Equal(t, "cde", v)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		source := []int{0, 1, 2, 3, 4}
+		k, v, ok := Find2(slices.All(source), func(i int, x int) bool { return x > 10 })
+		assert.False(t, ok)
+		assert.Equal(t, 0, k)
+		assert.Equal(t, 0, v)
+	})
+}
+
 func TestReject(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		assert.Empty(t, slices.Collect(Reject(Empty[int](), func(_ int) bool { return true })))
@@ -629,6 +642,60 @@ func TestSum(t *testing.T) {
 		expect := "abcd"
 		result := Sum(slices.Values(source))
 		assert.Equal(t, expect, result)
+	})
+}
+
+func TestUnique(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		assert.Empty(t, slices.Collect(Unique(Empty[int]())))
+	})
+
+	t.Run("finite", func(t *testing.T) {
+		source := []int{0, 1, 2, 2, 3, 4, 4}
+		expect := []int{0, 1, 2, 3, 4}
+		vals := slices.Collect(Unique(slices.Values(source)))
+		assert.Equal(t, expect, vals)
+	})
+
+	t.Run("break", func(t *testing.T) {
+		source := []int{0, 1, 2, 2, 3, 4, 4}
+		expect := []int{0, 1, 2, 3}
+		vals := Unique(slices.Values(source))
+		got := []int(nil)
+		for v := range vals {
+			got = append(got, v)
+			if len(got) >= len(expect) {
+				break
+			}
+		}
+		assert.Equal(t, expect, got)
+	})
+}
+
+func TestUniq(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		assert.Empty(t, slices.Collect(Uniq(Empty[int]())))
+	})
+
+	t.Run("finite", func(t *testing.T) {
+		source := []int{0, 1, 2, 2, 1, 3}
+		expect := []int{0, 1, 2, 1, 3}
+		vals := slices.Collect(Uniq(slices.Values(source)))
+		assert.Equal(t, expect, vals)
+	})
+
+	t.Run("break", func(t *testing.T) {
+		source := []int{0, 1, 2, 2, 1, 3}
+		expect := []int{0, 1, 2}
+		vals := Uniq(slices.Values(source))
+		got := []int(nil)
+		for v := range vals {
+			got = append(got, v)
+			if len(got) >= len(expect) {
+				break
+			}
+		}
+		assert.Equal(t, expect, got)
 	})
 }
 
