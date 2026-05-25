@@ -76,6 +76,24 @@ func TestEmpty(t *testing.T) {
 	assert.Empty(t, slices.Collect(Empty[int]()))
 }
 
+func TestLenMax(t *testing.T) {
+	n, ok := LenMax(Empty[int](), 3)
+	assert.Equal(t, 0, n)
+	assert.True(t, ok)
+
+	n, ok = LenMax(List(0, 1, 2), 3)
+	assert.Equal(t, 3, n)
+	assert.True(t, ok)
+
+	n, ok = LenMax(List(0, 1, 2, 3), 3)
+	assert.Equal(t, 3, n)
+	assert.False(t, ok)
+
+	n, ok = LenMax(List(0, 1, 2, 3), 0)
+	assert.Equal(t, 4, n)
+	assert.True(t, ok)
+}
+
 func TestConcat(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		assert.Empty(t, slices.Collect(Concat[int]()))
@@ -295,13 +313,13 @@ func TestSelect(t *testing.T) {
 	t.Run("always true", func(t *testing.T) {
 		source := []int{0, 1, 2, 3, 4}
 		expect := source
-		vals := Select(slices.Values(source), func(_ int) bool { return true })
+		vals := Select(slices.Values(source), True)
 		assert.Equal(t, expect, slices.Collect(vals))
 	})
 
 	t.Run("always false", func(t *testing.T) {
 		source := []int{0, 1, 2, 3, 4}
-		vals := Select(slices.Values(source), func(_ int) bool { return false })
+		vals := Select(slices.Values(source), False)
 		assert.Empty(t, slices.Collect(vals))
 	})
 
@@ -322,6 +340,52 @@ func TestSelect(t *testing.T) {
 			break
 		}
 		assert.Equal(t, 1, count)
+	})
+}
+
+func TestSelect2(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		assert.Empty(t, maps.Collect(Select2(Empty2[int, string](), True2)))
+	})
+
+	t.Run("always true", func(t *testing.T) {
+		source := []string{"a", "b", "c"}
+		expect := map[int]string{
+			0: "a",
+			1: "b",
+			2: "c",
+		}
+		vals := Select2(slices.All(source), True2)
+		assert.Equal(t, expect, maps.Collect(vals))
+	})
+
+	t.Run("always false", func(t *testing.T) {
+		source := []string{"a", "b", "c"}
+		vals := Select2(slices.All(source), False2)
+		assert.Empty(t, maps.Collect(vals))
+	})
+
+	t.Run("index even", func(t *testing.T) {
+		source := []string{"a", "b", "c", "d"}
+		expect := map[int]string{
+			0: "a",
+			2: "c",
+		}
+		vals := Select2(slices.All(source), func(i int, _ string) bool { return i%2 == 0 })
+		assert.Equal(t, expect, maps.Collect(vals))
+	})
+
+	t.Run("break", func(t *testing.T) {
+		source := []string{"a", "b", "c", "d"}
+		vals := Select2(slices.All(source), func(i int, _ string) bool { return i%2 == 1 })
+		ran := false
+		for i, v := range vals {
+			assert.Equal(t, 1, i)
+			assert.Equal(t, "b", v)
+			ran = true
+			break
+		}
+		assert.True(t, ran)
 	})
 }
 
@@ -365,7 +429,7 @@ func TestFind2(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		source := []int{0, 1, 2, 3, 4}
-		k, v, ok := Find2(slices.All(source), func(i int, x int) bool { return x > 10 })
+		k, v, ok := Find2(slices.All(source), False2)
 		assert.False(t, ok)
 		assert.Equal(t, 0, k)
 		assert.Equal(t, 0, v)
@@ -379,14 +443,14 @@ func TestReject(t *testing.T) {
 
 	t.Run("always true", func(t *testing.T) {
 		source := []int{0, 1, 2, 3, 4}
-		vals := Reject(slices.Values(source), func(_ int) bool { return true })
+		vals := Reject(slices.Values(source), True)
 		assert.Empty(t, slices.Collect(vals))
 	})
 
 	t.Run("always false", func(t *testing.T) {
 		source := []int{0, 1, 2, 3, 4}
 		expect := source
-		vals := Reject(slices.Values(source), func(_ int) bool { return false })
+		vals := Reject(slices.Values(source), False)
 		assert.Equal(t, expect, slices.Collect(vals))
 	})
 
@@ -403,6 +467,41 @@ func TestReject(t *testing.T) {
 		count := 0
 		for v := range vals {
 			assert.Equal(t, []int{1, 3}[count], v)
+			count++
+			if count == 1 {
+				break
+			}
+		}
+		assert.Equal(t, 1, count)
+	})
+}
+
+func TestRejectValue(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		assert.Empty(t, slices.Collect(RejectValue(Empty[int](), 0)))
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		source := []int{0, 1, 2, 3, 4}
+		expect := source
+		vals := RejectValue(slices.Values(source), 10)
+		assert.Equal(t, expect, slices.Collect(vals))
+	})
+
+	t.Run("found", func(t *testing.T) {
+		source := []int{0, 1, 2, 3, 4}
+		expect := []int{0, 1, 3, 4}
+		vals := RejectValue(slices.Values(source), 2)
+		assert.Equal(t, expect, slices.Collect(vals))
+	})
+
+	t.Run("break", func(t *testing.T) {
+		source := []int{0, 1, 2, 3, 4}
+		expect := []int{0, 1, 3, 4}
+		vals := RejectValue(slices.Values(source), 2)
+		count := 0
+		for v := range vals {
+			assert.Equal(t, expect[count], v)
 			count++
 			if count == 1 {
 				break
@@ -515,6 +614,11 @@ func TestMap(t *testing.T) {
 		assert.Empty(t, slices.Collect(Map(Empty[int](), func(x int) int { return x * 2 })))
 	})
 
+	t.Run("identity", func(t *testing.T) {
+		source := []int{0, 1, 2, 3, 4}
+		assert.Equal(t, source, slices.Collect(Map(slices.Values(source), Identity)))
+	})
+
 	t.Run("finite", func(t *testing.T) {
 		source := []int{0, 1, 2, 3, 4}
 		expect := []int{0, 2, 4, 6, 8}
@@ -552,6 +656,11 @@ func TestFlatMap(t *testing.T) {
 func TestMap2(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		assert.Empty(t, slices.Collect(Right(Map2(Empty2[int, int](), func(i int, x int) int { return i + x }))))
+	})
+
+	t.Run("identity", func(t *testing.T) {
+		source := []int{0, 1, 2, 3, 4}
+		assert.Equal(t, source, slices.Collect(Right(Map2(slices.All(source), Identity2))))
 	})
 
 	t.Run("finite", func(t *testing.T) {

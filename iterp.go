@@ -74,6 +74,24 @@ type Numeric interface {
 	constraints.Integer | constraints.Float | constraints.Complex
 }
 
+// Identity is a MapFunc that returns its argument unchanged.
+func Identity[T any](v T) T { return v }
+
+// Identity2 is a Map2Func that returns the second argument unchanged.
+func Identity2[K any, T any](k K, v T) T { return v }
+
+// True is a PredicateFunc that always returns true.
+func True[T any](T) bool { return true }
+
+// True2 is a Predicate2Func that always returns true.
+func True2[K any, T any](K, T) bool { return true }
+
+// False is a PredicateFunc that always returns false.
+func False[T any](T) bool { return false }
+
+// False2 is a Predicate2Func that always returns false.
+func False2[K any, T any](K, T) bool { return false }
+
 // Cons returns a sequence with head as the first element followed by the
 // elements of tail.
 func Cons[T any](head T, tail iter.Seq[T]) iter.Seq[T] {
@@ -107,6 +125,33 @@ func Empty[T any]() iter.Seq[T] {
 // Empty2 returns a empty sequence of pairs.
 func Empty2[T any, U any]() iter.Seq2[T, U] {
 	return func(yield func(T, U) bool) {}
+}
+
+// LenMax counts elements in the sequence by iterating it up to max elements.
+// LenMax consumes non-replayable sequences. If max is not a positive int,
+// LenMax iterates the entire sequence. The returned bool is true if the end of
+// the sequence was reached.
+func LenMax[T any](it iter.Seq[T], max int) (count int, ok bool) {
+	if max <= 0 {
+		return lenFast(it)
+	}
+
+	for range it {
+		if count >= max {
+			return count, false
+		}
+		count++
+	}
+	return count, true
+}
+
+// fast and dangerous
+func lenFast[T any](it iter.Seq[T]) (int, bool) {
+	count := 0
+	for range it {
+		count++
+	}
+	return count, true
 }
 
 // Concat returns a sequence that concatenates its arguments.
@@ -228,6 +273,18 @@ func Select[T any](it iter.Seq[T], p PredicateFunc[T]) iter.Seq[T] {
 	}
 }
 
+func Select2[K any, T any](it iter.Seq2[K, T], p Predicate2Func[K, T]) iter.Seq2[K, T] {
+	return func(yield func(K, T) bool) {
+		for k, v := range it {
+			if p(k, v) {
+				if !yield(k, v) {
+					return
+				}
+			}
+		}
+	}
+}
+
 // Find returns the first element in it for which p is true along with the bool
 // true. If there is no such element, it returns a zero value and false.
 func Find[T any](it iter.Seq[T], p PredicateFunc[T]) (T, bool) {
@@ -264,6 +321,10 @@ func Reject[T any](it iter.Seq[T], p PredicateFunc[T]) iter.Seq[T] {
 			}
 		}
 	}
+}
+
+func RejectValue[T comparable](it iter.Seq[T], v T) iter.Seq[T] {
+	return Reject(it, func(x T) bool { return x == v })
 }
 
 // Repeat returns a sequence that repeats the sequence it n times. If n is
